@@ -67,6 +67,8 @@ export default function ConnectWalletButton() {
       // window.open(data.hostedUrl, '_blank');
 
       // TODO: update the code of the agent using /v1/hosting/agents/{agentAddress}/code (doc: https://docs.agentverse.ai/docs/api/hosting)
+      
+      // TODO: For ethereum addres `address`, add a record for ENS key `agent_address` to `data.agentAddress`
     } else {
       setError(data.error || 'Agent creation failed');
     }
