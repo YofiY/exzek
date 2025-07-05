@@ -1,7 +1,7 @@
 {
   "network": "alfajores",
-  "contractAddress": "0x3f663e428260a4B91f0858d6a5DF5245EBB9f9bb",
+  "contractAddress": "0xa2B380Af8B77FaD1612b45379cAF0E1deEBAC4e0",
   "hubAddress": "0x68c931C9a534D37aa78094877F46fE46a49F1A51",
-  "deployedAt": "2025-06-28T12:39:21.780Z",
-  "deployer": "0x72caf21a20cEF3Bcc30449A8ac1DC29c90e92b91"
+  "deployedAt": "2025-07-05T19:58:53.038Z",
+  "deployer": "0x5b329e932D509F3757CA37a935Fa9047CBc42aB0"
 }

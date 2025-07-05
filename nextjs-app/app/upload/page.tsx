@@ -499,7 +499,7 @@ const AIChatPage = memo(function AIChatPage() {
       endpoint: `${process.env.NEXT_PUBLIC_SELF_ENDPOINT}`,
       logoBase64: "https://i.postimg.cc/mrmVf9hm/self.png",
       userId: walletAddress,
-      endpointType: "staging_https",
+      endpointType: "staging_celo",
       userIdType: "hex",
       userDefinedData: "Prove to Exzek",
       disclosures: disclosures
