@@ -1,9 +1,16 @@
 'use client';
 
 import React, { useState, memo, ReactNode, useEffect, useRef } from 'react';
-import { motion, useAnimation, useInView } from 'framer-motion';
-import { Send, FileText, Image, Video, Music, Archive, X, Bot, User, Paperclip } from 'lucide-react';
+import { AnimatePresence, motion, useAnimation, useInView } from 'framer-motion';
+import { Send, FileText, Image, Video, Music, Archive, X, Bot, User, Paperclip, QrCode } from 'lucide-react';
 import ConnectWalletButton from '../components/ConnectWallet';
+import { countries, getUniversalLink } from "@selfxyz/core";
+import {
+  SelfQRcodeWrapper,
+  SelfAppBuilder,
+  type SelfApp,
+} from "@selfxyz/qrcode";
+
 
 // ==================== Utils ====================
 function cn(...classes: (string | undefined | null | false)[]): string {
@@ -18,6 +25,210 @@ function formatTimestamp(timestamp: string): string {
     return '';
   }
 }
+
+// ==================== Identity Verification Modal ====================
+interface IdentityOption {
+  id: string;
+  title: string;
+  description: string;
+  value: boolean;
+}
+
+interface IdentityModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete: (selectedOptions: IdentityOption[]) => void;
+}
+
+const IdentityModal = memo(function IdentityModal({ isOpen, onClose, onComplete }: IdentityModalProps) {
+  const [step, setStep] = useState<'options' | 'qr'>('options');
+  const [options, setOptions] = useState<IdentityOption[]>([
+    {
+      id: 'age',
+      title: 'Prove that you are above 18',
+      description: 'Verify your age without revealing your exact birth date',
+      value: false
+    },
+    {
+      id: 'nationality',
+      title: 'Reveal your nationality',
+      description: 'Share your country of citizenship',
+      value: false
+    },
+    {
+      id: 'name',
+      title: 'Reveal your name',
+      description: 'Share your full legal name',
+      value: false
+    }
+  ]);
+
+  const toggleOption = (id: string) => {
+    setOptions(prev => prev.map(option => 
+      option.id === id ? { ...option, value: !option.value } : option
+    ));
+  };
+
+  const handleNext = () => {
+    const selectedOptions = options.filter(option => option.value);
+    if (selectedOptions.length > 0) {
+      setStep('qr');
+      // Here you can implement the Self SDK QR generation
+      onComplete(selectedOptions);
+    }
+  };
+
+  const handleBack = () => {
+    setStep('options');
+  };
+
+  const handleClose = () => {
+    setStep('options');
+    setOptions(prev => prev.map(option => ({ ...option, value: false })));
+    onClose();
+  };
+
+  const selectedCount = options.filter(option => option.value).length;
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={handleClose}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        />
+        
+        {/* Modal */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="relative w-full max-w-md mx-4 bg-slate-900/90 backdrop-blur-md border border-white/20 rounded-2xl p-6 shadow-2xl"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-white">
+              {step === 'options' ? 'Prove Your Identity' : 'Scan QR Code'}
+            </h2>
+            <button
+              onClick={handleClose}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            >
+              <X size={20} className="text-white/60" />
+            </button>
+          </div>
+
+          {step === 'options' && (
+            <>
+              {/* Description */}
+              <p className="text-white/70 text-sm mb-6">
+                Choose what information you want to verify. You can select multiple options.
+              </p>
+
+              {/* Options */}
+              <div className="space-y-3 mb-6">
+                {options.map((option) => (
+                  <motion.div
+                    key={option.id}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <label className="flex items-start gap-3 p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl cursor-pointer transition-all duration-200">
+                      <div className="flex items-center h-5">
+                        <input
+                          type="checkbox"
+                          checked={option.value}
+                          onChange={() => toggleOption(option.id)}
+                          className="w-4 h-4 text-blue-600 bg-transparent border-2 border-white/30 rounded focus:ring-blue-500 focus:ring-2"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-white font-medium text-sm mb-1">
+                          {option.title}
+                        </h3>
+                        <p className="text-white/60 text-xs">
+                          {option.description}
+                        </p>
+                      </div>
+                    </label>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleClose}
+                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white font-medium transition-all duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleNext}
+                  disabled={selectedCount === 0}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next ({selectedCount})
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 'qr' && (
+            <>
+              {/* QR Code Placeholder */}
+              <div className="flex flex-col items-center mb-6">
+                <div className="w-48 h-48 bg-white rounded-xl mb-4 flex items-center justify-center">
+                  <QrCode size={64} className="text-gray-400" />
+                  <div className="absolute text-gray-600 text-sm font-medium">
+                    QR Code Here
+                  </div>
+                </div>
+                <p className="text-white/70 text-sm text-center">
+                  Scan this QR code with your Self app to verify your identity
+                </p>
+              </div>
+
+              {/* Selected Options */}
+              <div className="bg-white/5 rounded-xl p-3 mb-6">
+                <h4 className="text-white font-medium text-sm mb-2">Verifying:</h4>
+                <div className="space-y-1">
+                  {options.filter(option => option.value).map((option) => (
+                    <div key={option.id} className="text-white/70 text-xs">
+                      • {option.title}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleBack}
+                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white font-medium transition-all duration-200"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleClose}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 rounded-xl text-white font-medium transition-all duration-200"
+                >
+                  Done
+                </button>
+              </div>
+            </>
+          )}
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+});
 
 // ==================== BoxReveal Component ====================
 type BoxRevealProps = {
@@ -150,7 +361,7 @@ interface Message {
   id: string;
   type: 'user' | 'ai';
   content: string;
-  timestamp: string; // Store as string to avoid SSR/CSR mismatch
+  timestamp: string;
   attachments?: UploadedFile[];
 }
 
@@ -194,6 +405,7 @@ const AIChatPage = memo(function AIChatPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const [isIdentityModalOpen, setIsIdentityModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -288,6 +500,21 @@ const AIChatPage = memo(function AIChatPage() {
     if (uploadedFiles.length === 1) {
       setShowFileUpload(false);
     }
+  };
+
+  const handleIdentityVerification = (selectedOptions: IdentityOption[]) => {
+    // Handle the selected options - this is where you'll implement Self SDK
+    console.log('Selected identity options:', selectedOptions);
+    
+    // Add a message to the chat about the verification
+    const verificationMessage: Message = {
+      id: Date.now().toString(),
+      type: 'ai',
+      content: `Identity verification initiated for: ${selectedOptions.map(opt => opt.title.toLowerCase()).join(', ')}. Please scan the QR code to complete the verification.`,
+      timestamp: new Date().toISOString()
+    };
+    
+    setMessages(prev => [...prev, verificationMessage]);
   };
 
   return (
@@ -433,7 +660,7 @@ const AIChatPage = memo(function AIChatPage() {
               />
               
               <button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => setIsIdentityModalOpen(true)}
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full flex items-center justify-center gap-2 transition-all duration-300 flex-shrink-0 whitespace-nowrap"
               >
                 <Paperclip size={16} className="text-white" />
@@ -463,6 +690,13 @@ const AIChatPage = memo(function AIChatPage() {
           </div>
         </BoxReveal>
       </div>
+
+      {/* Identity Verification Modal */}
+      <IdentityModal
+        isOpen={isIdentityModalOpen}
+        onClose={() => setIsIdentityModalOpen(false)}
+        onComplete={handleIdentityVerification}
+      />
     </div>
   );
 });
