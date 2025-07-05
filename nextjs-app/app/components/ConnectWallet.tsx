@@ -49,19 +49,26 @@ export default function ConnectWalletButton() {
       return;
     }
 
-    try {
-      // TODO: create Agent on python backend and get agent address
-      const agentAddress = '0x1234567890123456789012345678901234567890';
-
+    if (!signer) {
+      setError('No Ethereum signer found');
+      return;
+    }
+    const resp = await fetch('/api/agents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress: address })
+    });
+    const data = await resp.json();
+    if (resp.ok) {
       // user signs that it is their agent
-      const signature = await signer!.signMessage(agentAddress);
-      console.log('signature', signature);
+      const signature = await signer.signMessage(data.agentAddress);
+      setAgentCertificate(data.agentAddress, signature);
+      // // Optionally redirect to the hosted agent inspect page:
+      // window.open(data.hostedUrl, '_blank');
 
-      setAgentCertificate(agentAddress, signature);
-
-      // TODO: after that, give back this info to the agent (POST to the python backend)
-    } catch (err: any) {
-      setError(err.message || 'Connection error');
+      // TODO: update the code of the agent using /v1/hosting/agents/{agentAddress}/code (doc: https://docs.agentverse.ai/docs/api/hosting)
+    } else {
+      setError(data.error || 'Agent creation failed');
     }
   };
 
