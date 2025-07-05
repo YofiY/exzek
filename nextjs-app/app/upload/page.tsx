@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, memo, ReactNode, useEffect, useRef } from 'react';
-import { motion, useAnimation, useInView } from 'framer-motion';
-import { Send, FileText, Image, Video, Music, Archive, X, Bot, User, Paperclip } from 'lucide-react';
+import { AnimatePresence, motion, useAnimation, useInView } from 'framer-motion';
+import { Send, FileText, Image, Video, Music, Archive, X, Bot, User, Paperclip, QrCode } from 'lucide-react';
 import ConnectWalletButton from '../components/connectWallet';
 
 // ==================== Utils ====================
