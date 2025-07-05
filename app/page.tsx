@@ -137,7 +137,7 @@ const BoxReveal = memo(function BoxReveal({
 });
 
 // ==================== BackgroundBeams Component ====================
-const BackgroundBeams = memo(({ className }: { className?: string }) => {
+const BackgroundBeams = memo(function BackgroundBeams({ className }: { className?: string }) {
   const paths = [
     "M-380 -189C-380 -189 -312 216 152 343C616 470 684 875 684 875",
     "M-373 -197C-373 -197 -305 208 159 335C623 462 691 867 691 867",
@@ -456,7 +456,7 @@ const LoginPage = memo(function LoginPage() {
           <BoxReveal boxColor="#3b82f6" duration={0.3}>
             <div className="mt-6 text-center">
               <p className="text-white/70 text-sm">
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <button className="text-blue-300 hover:text-blue-200 transition-colors">
                   Sign up here
                 </button>
