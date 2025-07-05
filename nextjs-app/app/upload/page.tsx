@@ -84,13 +84,15 @@ const IdentityModal = memo(function IdentityModal({
   const handleNext = () => {
     const selectedOptions = options.filter(option => option.value);
     if (selectedOptions.length > 0) {
-      setStep('qr');
+      // Call onComplete to trigger Self app creation with selected options
       onComplete(selectedOptions);
+      setStep('qr');
     }
   };
 
   const handleBack = () => {
     setStep('options');
+    // Don't reset the Self app here, just go back to options
   };
 
   const handleClose = () => {
@@ -195,7 +197,7 @@ const IdentityModal = memo(function IdentityModal({
             <>
               {/* QR Code */}
               <div className="flex flex-col items-center mb-6">
-                <div className="w-64 h-64 bg-white rounded-xl mb-4 p-4 flex items-center justify-center relative overflow-visible">
+                <div className="w-72 h-72 bg-white mb-4 p-6 flex items-center justify-center relative">
                   {selfApp ? (
                     <div className="w-full h-full flex items-center justify-center">
                       <SelfQRcodeWrapper
@@ -216,7 +218,7 @@ const IdentityModal = memo(function IdentityModal({
                     <div className="flex flex-col items-center justify-center">
                       <QrCode size={64} className="text-gray-400" />
                       <div className="text-gray-600 text-sm font-medium mt-2">
-                        Loading QR Code...
+                        Generating QR Code...
                       </div>
                     </div>
                   )}
@@ -461,46 +463,62 @@ const AIChatPage = memo(function AIChatPage() {
   const [selfApp, setSelfApp] = useState<SelfApp | null>(null);
   const { user } = useContext(UserContext);
   const [toastMessage, setToastMessage] = useState("");
+  const [selectedIdentityOptions, setSelectedIdentityOptions] = useState<IdentityOption[]>([]);
 
-  // Update useEffect to properly handle wallet address changes
+  // Function to create Self app with specific disclosures
+  const createSelfApp = (walletAddress: string, options: IdentityOption[]) => {
+    // Map user selections to Self SDK disclosure format
+    const disclosures: any = {};
+    
+    options.forEach(option => {
+      switch (option.id) {
+        case 'age':
+          if (option.value) {
+            disclosures.minimumAge = 18;
+          }
+          break;
+        case 'nationality':
+          if (option.value) {
+            disclosures.nationality = true;
+          }
+          break;
+        case 'name':
+          if (option.value) {
+            disclosures.name = true;
+          }
+          break;
+      }
+    });
+
+    console.log('Creating Self app with disclosures:', disclosures);
+
+    const app = new SelfAppBuilder({
+      version: 2,
+      appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || "Exzek",
+      scope: process.env.NEXT_PUBLIC_SELF_SCOPE || "exzek",
+      endpoint: `${process.env.NEXT_PUBLIC_SELF_ENDPOINT}`,
+      logoBase64: "https://i.postimg.cc/mrmVf9hm/self.png",
+      userId: walletAddress,
+      endpointType: "staging_https",
+      userIdType: "hex",
+      userDefinedData: "Prove to Exzek",
+      disclosures: disclosures
+    }).build();
+
+    return app;
+  };
+
+  // Initial useEffect for wallet connection (without creating Self app)
   useEffect(() => {
     const walletAddress = user?.walletAddress;
     console.log('User from context:', user);
     console.log('Wallet address:', walletAddress);
     
-    if (walletAddress) {
-      try {
-        console.log('Initializing Self app with wallet address:', walletAddress);
-        console.log('Self endpoint:', process.env.NEXT_PUBLIC_SELF_ENDPOINT);
-        
-        const app = new SelfAppBuilder({
-          version: 2,
-          appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || "Self Workshop",
-          scope: process.env.NEXT_PUBLIC_SELF_SCOPE || "self-workshop",
-          endpoint: `${process.env.NEXT_PUBLIC_SELF_ENDPOINT}`,
-          logoBase64: "https://i.postimg.cc/mrmVf9hm/self.png",
-          userId: walletAddress,
-          endpointType: "staging_https",
-          userIdType: "hex",
-          userDefinedData: "Bonjour Cannes!",
-          disclosures: {
-            minimumAge: 18,
-            nationality: true,
-            gender: true,
-          }
-        }).build();
-        
-        console.log("Self app initialized successfully:", app);
-        setSelfApp(app);
-      } catch (error) {
-        console.error("Failed to initialize Self app:", error);
-        setSelfApp(null);
-      }
-    } else {
+    if (!walletAddress) {
       console.log("No wallet address available, clearing Self app");
       setSelfApp(null);
     }
-  }, [user?.walletAddress]); // Only depend on walletAddress changes
+  }, [user?.walletAddress]);
 
   const displayToast = (message: string) => {
     setToastMessage(message);
@@ -640,14 +658,28 @@ const AIChatPage = memo(function AIChatPage() {
       return;
     }
 
-    const verificationMessage: Message = {
-      id: Date.now().toString(),
-      type: 'ai',
-      content: `Identity verification initiated for: ${selectedOptions.map(opt => opt.title.toLowerCase()).join(', ')}. Please scan the QR code to complete the verification.`,
-      timestamp: new Date().toISOString()
-    };
+    try {
+      // Store selected options
+      setSelectedIdentityOptions(selectedOptions);
+      
+      // Create Self app with user-selected disclosures
+      const app = createSelfApp(user.walletAddress, selectedOptions);
+      setSelfApp(app);
+      
+      console.log("Self app created with user selections:", app);
 
-    setMessages(prev => [...prev, verificationMessage]);
+      const verificationMessage: Message = {
+        id: Date.now().toString(),
+        type: 'ai',
+        content: `Identity verification initiated for: ${selectedOptions.map(opt => opt.title.toLowerCase()).join(', ')}. Please scan the QR code to complete the verification.`,
+        timestamp: new Date().toISOString()
+      };
+
+      setMessages(prev => [...prev, verificationMessage]);
+    } catch (error) {
+      console.error("Failed to create Self app with user selections:", error);
+      displayToast("Failed to initialize identity verification. Please try again.");
+    }
   };
 
   return (
@@ -842,7 +874,12 @@ const AIChatPage = memo(function AIChatPage() {
         {/* Identity Verification Modal */}
         <IdentityModal
           isOpen={isIdentityModalOpen}
-          onClose={() => setIsIdentityModalOpen(false)}
+          onClose={() => {
+            setIsIdentityModalOpen(false);
+            // Clear the Self app when modal is closed
+            setSelfApp(null);
+            setSelectedIdentityOptions([]);
+          }}
           onComplete={handleIdentityVerification}
           selfApp={selfApp}
           onVerificationSuccess={handleSuccessfulVerification}
