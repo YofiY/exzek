@@ -3,6 +3,7 @@
 import React, { useState, memo, ReactNode, useEffect, useRef } from 'react';
 import { motion, useAnimation, useInView } from 'framer-motion';
 import { Send, FileText, Image, Video, Music, Archive, X, Bot, User, Paperclip } from 'lucide-react';
+import ConnectWalletButton from '../components/connectWallet';
 
 // ==================== Utils ====================
 function cn(...classes: (string | undefined | null | false)[]): string {
@@ -308,6 +309,9 @@ const AIChatPage = memo(function AIChatPage() {
             </div>
           </div>
         </BoxReveal>
+
+        {/* Connect Wallet Button */}
+        <ConnectWalletButton />
 
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
