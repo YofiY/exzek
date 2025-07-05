@@ -243,7 +243,7 @@ interface LoginFormData {
 }
 
 const LoginPage = memo(function LoginPage() {
-  const router = useRouter();
+  // const router = useRouter();
   const [loginType, setLoginType] = useState<LoginType>('employer');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -292,8 +292,8 @@ const LoginPage = memo(function LoginPage() {
       console.log('Login successful:', data.user);
       
       // Redirect to upload page
-      // window.location.href = '/upload';
-      router.push('/upload');
+      window.location.href = '/upload';
+      // router.push('/upload');
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Login failed');
     } finally {
