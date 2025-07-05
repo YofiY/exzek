@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { BrowserProvider } from 'ethers';
 import type { JsonRpcSigner } from 'ethers';
-import { Wallet } from 'lucide-react';
+import { Bot, Wallet } from 'lucide-react';
 import { UserContext } from '../UserContext';
 
 export default function ConnectWalletButton() {
@@ -10,7 +10,7 @@ export default function ConnectWalletButton() {
   const [signer, setSigner] = useState<JsonRpcSigner | null>(null);
   const [address, setAddress] = useState<string>('');
   const [error, setError] = useState<string>('');
-  const { setWalletAddress } = useContext(UserContext);
+  const { setWalletAddress, setAgentCertificate } = useContext(UserContext);
 
   useEffect(() => {
     // detect MetaMask
@@ -43,6 +43,28 @@ export default function ConnectWalletButton() {
     }
   };
 
+  const createAgent = async () => {
+    if (!provider) {
+      setError('No Ethereum provider found');
+      return;
+    }
+
+    try {
+      // TODO: create Agent on python backend and get agent address
+      const agentAddress = '0x1234567890123456789012345678901234567890';
+
+      // user signs that it is their agent
+      const signature = await signer!.signMessage(agentAddress);
+      console.log('signature', signature);
+
+      setAgentCertificate(agentAddress, signature);
+
+      // TODO: after that, give back this info to the agent (POST to the python backend)
+    } catch (err: any) {
+      setError(err.message || 'Connection error');
+    }
+  };
+
   return (
     <div>
       <button
@@ -60,6 +82,18 @@ export default function ConnectWalletButton() {
         <p className="mt-2 text-sm text-red-400">
           {error}
         </p>
+      )}
+
+      {address && signer &&(
+        <button
+          onClick={createAgent}
+          className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full flex items-center gap-2 transition-all duration-300 whitespace-nowrap"
+        >
+          <Bot size={16} className="text-white" />
+          <span className="text-white text-sm font-medium">
+            Create Agent
+          </span>
+        </button>
       )}
     </div>
   );

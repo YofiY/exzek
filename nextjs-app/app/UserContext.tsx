@@ -3,22 +3,28 @@ import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
 export type User = {
-  id?: string;
-  email?: string;
-  // …any other user fields
+  id?: string; // TODO: unused
+  email?: string; // TODO: unused
   walletAddress?: string;
+  // certificate that user owns an agent
+  agentCertificate?: {
+    agentAddress: string;
+    signature: string;
+  };
 } | null;
 
 export type UserContextType = {
   user: User;
   setUser: (user: User) => void;
   setWalletAddress: (address: string) => void;
+  setAgentCertificate: (agentAddress: string, signature: string) => void;
 };
 
 export const UserContext = createContext<UserContextType>({
   user: null,
   setUser: () => {},
   setWalletAddress: () => {},
+  setAgentCertificate: () => {},
 });
 
 export function UserProvider({ children }: { children: ReactNode }) {
@@ -61,8 +67,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
     console.log('setWalletAddress', user);
   };
 
+  const setAgentCertificate = (agentAddress: string, signature: string) => {
+    setUser(prev => ({
+      ...(prev ?? {}),
+      agentCertificate: {
+        agentAddress,
+        signature,
+      },
+    }));
+
+    console.log('setAgentCertificate', user);
+  };
+
   return (
-    <UserContext.Provider value={{ user, setUser, setWalletAddress }}>
+    <UserContext.Provider value={{ user, setUser, setWalletAddress, setAgentCertificate }}>
       {children}
     </UserContext.Provider>
   );
