@@ -4,6 +4,13 @@ import React, { useState, memo, ReactNode, useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useAnimation, useInView } from 'framer-motion';
 import { Send, FileText, Image, Video, Music, Archive, X, Bot, User, Paperclip, QrCode } from 'lucide-react';
 import ConnectWalletButton from '../components/connectWallet';
+import { countries, getUniversalLink } from "@selfxyz/core";
+import {
+  SelfQRcodeWrapper,
+  SelfAppBuilder,
+  type SelfApp,
+} from "@selfxyz/qrcode";
+
 
 // ==================== Utils ====================
 function cn(...classes: (string | undefined | null | false)[]): string {
