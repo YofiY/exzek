@@ -1,5 +1,6 @@
+import time
 import requests
-from uagents import Agent, Context
+from uagents import Agent, Context, Model
 import os
 import json
 from dotenv import load_dotenv
@@ -7,30 +8,30 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+class Message(Model):
+    message : str
+
+class Request(Model):
+    text: str
+
+class Response(Model):
+    timestamp: int
+    text: str
+    agent_address: str
+
 agent = Agent(
-    name="AI_Language_Tutor",
+    name="agent-0x0796A4fDcb243369b4d5264bDd7311Fa4ce20573", # will be done dynamically in javascript
     port=8000,  # You can change this to any available port
     endpoint="http://localhost:8000/submit"
 )
 
-def get_language_help(query: str, target_language: str = "Spanish") -> str:
-    """
-    Call LLM API to get language learning help.
-    """
+# Helper function to call ASI1 API
+def prompt_as1(prompt: str) -> str:
     url = "https://api.asi1.ai/v1/chat/completions"
     headers = {
         'Content-Type': 'application/json',
         'Authorization': f'Bearer {os.getenv("ASI1_API_KEY")}'
     }
-
-    prompt = f"""You are an AI language tutor. Help the user with their language learning request:
-
-    - If they ask for a **translation**, provide it in {target_language}.
-    - If they provide a sentence, **correct any grammar mistakes**.
-    - If they ask for pronunciation tips, explain how to say it.
-
-    User request: "{query}"
-    """
 
     payload = {
         "model": "asi1-mini",
@@ -52,16 +53,32 @@ def get_language_help(query: str, target_language: str = "Spanish") -> str:
 
 @agent.on_event("startup")
 async def language_tutor_demo(ctx: Context):
-    """
-    On startup, demonstrate the AI language tutor.
-    """
-    query = "How do you say 'Good morning' in French?"  # Change this for different examples
+    ctx.logger.info("Agent started")
 
-    ctx.logger.info(f"User query: {query}")
+# For more info on communication: https://innovationlab.fetch.ai/resources/docs/agent-communication/uagent-uagent-communication
 
-    response = get_language_help(query, target_language="French")
+# Callback when a message is received
+@agent.on_message(model = Message)
+async def message_handler(ctx: Context, sender : str, msg: Message):
+    ctx.logger.info(f'I have received a message from {sender}.')
+    ctx.logger.info(f'I have received a message {msg.message}.')
 
-    ctx.logger.info(f"🌍 AI Tutor Response: {response}")
+# User queries agent via the chat assistant
+@agent.on_rest_post("/rest/post", Request, Response)
+async def handle_post(ctx: Context, req: Request) -> Response:
+    ctx.logger.info("Received POST request")
+    return Response(
+        text=f"Received: {req.text}",
+        agent_address=ctx.agent.address,
+        timestamp=int(time.time()),
+    )
+    
+    # A user can do two things:
+    # 1. Add infomation about himself to the agent memory
+    # 2. Ask the agent something about another user
+    
+    # TODO: logic
+    
 
 if __name__ == "__main__":
     agent.run()
