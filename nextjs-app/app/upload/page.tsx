@@ -601,6 +601,44 @@ const AIChatPage = memo(function AIChatPage() {
   //   setIsTyping(false);
   // };
 
+  const simulateAIResponse = async (userMessage: string, files?: UploadedFile[]) => {
+    setIsTyping(true);
+  
+    const lowerMessage = userMessage.toLowerCase();
+    let aiResponse = '';
+    let delay = 2000; // Default greeting delay
+  
+    if (lowerMessage.includes('hey') || lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      aiResponse = "Hey Bob! 👋 How can I help you today?";
+    } else if (lowerMessage.includes('alice27.eth')) {
+      // Random delay between 8-12 seconds
+      delay = 8000 + Math.random() * 5000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+  
+      aiResponse = `Let me check her agent... 🕵️\n` +
+        `✅ Yes, Alice is French. Her nationality has been verified via a zero-knowledge proof and published on-chain.\n\n` +
+        `You can verify the proof here:\n` +
+        `🔗 https://alfajores.celoscan.io/address/0xa2B380Af8B77FaD1612b45379cAF0E1deEBAC4e0#readContract\n\n` +
+        `The Self.xyz attestation confirms Alice’s nationality as French—no private data was exposed.`;
+    } else {
+      delay = 1500 + Math.random() * 1500;
+      await new Promise(resolve => setTimeout(resolve, delay));
+  
+      aiResponse = `You said: "${userMessage}". This is a demo, so responses are limited. Try asking about "alice27.eth"!`;
+    }
+  
+    const aiMessage: Message = {
+      id: Date.now().toString(),
+      type: 'ai',
+      content: aiResponse,
+      timestamp: new Date().toISOString()
+    };
+  
+    setMessages(prev => [...prev, aiMessage]);
+    setIsTyping(false);
+  };  
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() && uploadedFiles.length === 0) return;
 
@@ -618,32 +656,32 @@ const AIChatPage = memo(function AIChatPage() {
     setShowFileUpload(false);
 
     // Simulate AI response
-    // await simulateAIResponse(userMessage.content, userMessage.attachments);
+    await simulateAIResponse(userMessage.content, userMessage.attachments);
 
-    const url = user?.walletAddress == process.env.TEST_ALICE_ADDRESS ? 'http://localhost:8000/rest/post' : 'http://localhost:8001/rest/post';
-    setIsTyping(true);
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text: history ? history + '\n\n' + userMessage.content : userMessage.content
-      }),
-    });
+    // const url = user?.walletAddress == process.env.TEST_ALICE_ADDRESS ? 'http://localhost:8000/rest/post' : 'http://localhost:8001/rest/post';
+    // setIsTyping(true);
+    // const response = await fetch(url, {
+    //   method: 'POST',
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //   },
+    //   body: JSON.stringify({
+    //     text: history ? history + '\n\n' + userMessage.content : userMessage.content
+    //   }),
+    // });
 
-    const data = await response.json();
-    setHistory(data.history || '');
+    // const data = await response.json();
+    // setHistory(data.history || '');
 
-    const aiMessage: Message = {
-      id: Date.now().toString(),
-      type: 'ai',
-      content: response.status == 200 ? data.text : "I'm sorry, I'm not able to process your message at the moment. Please try again later.",
-      timestamp: new Date().toISOString()
-    };
+    // const aiMessage: Message = {
+    //   id: Date.now().toString(),
+    //   type: 'ai',
+    //   content: response.status == 200 ? data.text : "I'm sorry, I'm not able to process your message at the moment. Please try again later.",
+    //   timestamp: new Date().toISOString()
+    // };
 
-    setMessages(prev => [...prev, aiMessage]);
-    setIsTyping(false);
+    // setMessages(prev => [...prev, aiMessage]);
+    // setIsTyping(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -748,7 +786,7 @@ const AIChatPage = memo(function AIChatPage() {
 
           {/* Identity Verification Modal */}
           {/* Connect Wallet Button */}
-          <ConnectWalletButton />
+          {/* <ConnectWalletButton force={true} /> */}
   </div>
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
