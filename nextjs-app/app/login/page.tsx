@@ -1,65 +1,16 @@
 'use client';
 
-import React, { useState, ChangeEvent, FormEvent, memo, ReactNode, useEffect, useRef, forwardRef } from 'react';
-import { motion, useAnimation, useInView, useMotionTemplate, useMotionValue } from 'framer-motion';
-import { Eye, EyeOff, Building2, User } from 'lucide-react';
-import { useRouter } from 'next/router';
+import React, { useState, memo, ReactNode, useEffect, useRef, useContext } from 'react';
+import { motion, useAnimation, useInView } from 'framer-motion';
+import { Building2, User, Wallet, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import ConnectWalletButton from '../components/ConnectWallet';
+import { UserContext } from '../UserContext';
 
 // ==================== Utils ====================
 function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ');
 }
-
-// ==================== Input Component ====================
-const Input = memo(
-  forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-    function Input({ className, type, ...props }, ref) {
-      const radius = 100;
-      const [visible, setVisible] = useState(false);
-
-      const mouseX = useMotionValue(0);
-      const mouseY = useMotionValue(0);
-
-      function handleMouseMove({
-        currentTarget,
-        clientX,
-        clientY,
-      }: React.MouseEvent<HTMLDivElement>) {
-        const { left, top } = currentTarget.getBoundingClientRect();
-        mouseX.set(clientX - left);
-        mouseY.set(clientY - top);
-      }
-
-      return (
-        <motion.div
-          style={{
-            background: useMotionTemplate`
-              radial-gradient(
-                ${visible ? radius + 'px' : '0px'} circle at ${mouseX}px ${mouseY}px,
-                #3b82f6,
-                transparent 80%
-              )
-            `,
-          }}
-          onMouseMove={handleMouseMove}
-          onMouseEnter={() => setVisible(true)}
-          onMouseLeave={() => setVisible(false)}
-          className='group/input rounded-lg p-[2px] transition duration-300'
-        >
-          <input
-            type={type}
-            className={cn(
-              'flex h-12 w-full rounded-md border-none bg-gray-50 px-4 py-3 text-sm text-black transition duration-400 group-hover/input:shadow-none file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-400 focus-visible:ring-[2px] focus-visible:ring-neutral-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-800 dark:text-white dark:shadow-[0px_0px_1px_1px_#404040] dark:focus-visible:ring-neutral-600',
-              className
-            )}
-            ref={ref}
-            {...props}
-          />
-        </motion.div>
-      );
-    }
-  )
-);
 
 // ==================== BoxReveal Component ====================
 type BoxRevealProps = {
@@ -207,267 +158,145 @@ const BackgroundBeams = memo(function BackgroundBeams({ className }: { className
   );
 });
 
-// ==================== Label Component ====================
-interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
-  htmlFor?: string;
-}
-
-const Label = memo(function Label({ className, ...props }: LabelProps) {
-  return (
-    <label
-      className={cn(
-        'text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-foreground',
-        className
-      )}
-      {...props}
-    />
-  );
-});
-
-// ==================== Button Component ====================
-const BottomGradient = () => {
-  return (
-    <>
-      <span className='group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent' />
-      <span className='group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-indigo-500 to-transparent' />
-    </>
-  );
-};
-
-// ==================== Main Login Component ====================
+// ==================== Login Page Component ====================
 type LoginType = 'employer' | 'employee';
 
-interface LoginFormData {
-  email: string;
-  password: string;
-}
-
 const LoginPage = memo(function LoginPage() {
-  // const router = useRouter();
+  const router = useRouter();
   const [loginType, setLoginType] = useState<LoginType>('employer');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
-    password: '',
-  });
+  const { user } = useContext(UserContext);
 
-  const handleInputChange = (field: keyof LoginFormData) => (
-    event: ChangeEvent<HTMLInputElement>
-  ) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: event.target.value,
-    }));
-    // Clear error when user starts typing
-    if (error) setError('');
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          type: loginType,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-
-      // Login successful
-      console.log('Login successful:', data.user);
-      
-      // Redirect to upload page
-      window.location.href = '/upload';
-      // router.push('/upload');
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Login failed');
-    } finally {
-      setIsLoading(false);
+  // Redirect to upload page when wallet is connected
+  useEffect(() => {
+    if (user?.walletAddress) {
+      console.log('Wallet connected, redirecting to upload page...');
+      router.push('/upload');
     }
-  };
-
-  const toggleLoginType = (type: LoginType) => {
-    setLoginType(type);
-    setError(''); // Clear any existing errors
-  };
+  }, [user?.walletAddress, router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
-      <BackgroundBeams className="opacity-30" />
+  <div >
+    {/* Background with beams */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden" style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }}>
+     
       
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
         <div className="w-full max-w-md">
           {/* Login Type Selector */}
-          <BoxReveal boxColor="#3b82f6" duration={0.5}>
-            <div className="mb-8 text-center">
-              <h1 className="text-4xl font-bold text-white mb-6">Welcome Back</h1>
-              <div className="flex bg-white/10 backdrop-blur-sm rounded-xl p-1 border border-white/20">
-                <button
-                  onClick={() => toggleLoginType('employer')}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg transition-all duration-300 font-medium",
-                    loginType === 'employer'
-                      ? "bg-white text-slate-900 shadow-lg"
-                      : "text-white hover:bg-white/10"
-                  )}
-                >
-                  <Building2 size={18} />
-                  Employer
-                </button>
-                <button
-                  onClick={() => toggleLoginType('employee')}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg transition-all duration-300 font-medium",
-                    loginType === 'employee'
-                      ? "bg-white text-slate-900 shadow-lg"
-                      : "text-white hover:bg-white/10"
-                  )}
-                >
-                  <User size={18} />
-                  Employee
-                </button>
-              </div>
-            </div>
-          </BoxReveal>
 
-          {/* Login Form */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl">
+
+          {/* Header */}
+          <div className="text-center mb-8">
             <BoxReveal boxColor="#3b82f6" duration={0.3}>
-              <h2 className="text-2xl font-semibold text-white mb-2">
-                Log in as {loginType}
+              <h2 className="text-3xl font-bold text-white mb-3">
+                Connect Your Wallet
               </h2>
             </BoxReveal>
             
             <BoxReveal boxColor="#3b82f6" duration={0.3}>
               <p className="text-white/70 mb-6">
                 {loginType === 'employer' 
-                  ? 'Access your employer dashboard and manage your team'
-                  : 'Access your employee portal and view your schedule'
+                  ? 'Connect your wallet to access the employer dashboard and deploy your agents'
+                  : 'Connect your wallet to access your employee portal and verify your identity'
                 }
               </p>
             </BoxReveal>
-
-            {/* Error Message */}
-            {error && (
-              <BoxReveal boxColor="#ef4444" duration={0.3}>
-                <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
-                  <p className="text-red-200 text-sm">{error}</p>
-                </div>
-              </BoxReveal>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <BoxReveal boxColor="#3b82f6" duration={0.3}>
-                  <Label htmlFor="email" className="text-white mb-2 block">
-                    Email Address
-                  </Label>
-                </BoxReveal>
-                <BoxReveal boxColor="#3b82f6" duration={0.3}>                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={formData.email}
-                      onChange={handleInputChange('email')}
-                      disabled={isLoading}
-                      required
-                    />
-                </BoxReveal>
-              </div>
-
-              <div>
-                <BoxReveal boxColor="#3b82f6" duration={0.3}>
-                  <Label htmlFor="password" className="text-white mb-2 block">
-                    Password
-                  </Label>
-                </BoxReveal>
-                <BoxReveal boxColor="#3b82f6" duration={0.3}>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Enter your password"
-                      value={formData.password}
-                      onChange={handleInputChange('password')}
-                      disabled={isLoading}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      disabled={isLoading}
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                </BoxReveal>
-              </div>
-
-              <BoxReveal boxColor="#3b82f6" duration={0.3}>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="group/btn relative w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg font-medium transition-all duration-300 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Signing In...
-                    </span>
-                  ) : (
-                    <>
-                      Sign In as {loginType === 'employer' ? 'Employer' : 'Employee'}
-                      <BottomGradient />
-                    </>
-                  )}
-                </button>
-              </BoxReveal>
-
-              <BoxReveal boxColor="#3b82f6" duration={0.3}>
-                <div className="text-center">
-                  <button
-                    type="button"
-                    className="text-blue-300 hover:text-blue-200 text-sm transition-colors"
-                  >
-                    Forgot your password?
-                  </button>
-                </div>
-              </BoxReveal>
-            </form>
           </div>
 
+          {/* Wallet Connection Section */}
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl">
+            <BoxReveal boxColor="#3b82f6" duration={0.3}>
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Wallet size={32} className="text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  Secure Wallet Authentication
+                </h3>
+                <p className="text-white/60 text-sm">
+                  Connect your MetaMask wallet to continue. Make sure you're on the Sepolia testnet.
+                </p>
+              </div>
+            </BoxReveal> 
+
+            {/* Connect Wallet Button */}
+            <BoxReveal boxColor="#3b82f6" duration={0.3}>
+              <div className="space-y-4">
+                <ConnectWalletButton />
+                
+                {user?.walletAddress && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center justify-center gap-2 p-3 bg-green-500/20 border border-green-500/30 rounded-lg"
+                  >
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="text-green-200 text-sm font-medium">
+                      Wallet Connected - Redirecting...
+                    </span>
+                    <ArrowRight size={16} className="text-green-400" />
+                  </motion.div>
+                )}
+              </div>
+            </BoxReveal>
+
+            {/* Features */}
+            <BoxReveal boxColor="#3b82f6" duration={0.3}>
+              <div className="mt-8 pt-6 border-t border-white/10">
+                <h4 className="text-white font-medium mb-3 text-sm">What you can do:</h4>
+                <div className="space-y-2">
+                  {loginType === 'employer' ? (
+                    <>
+                      <div className="text-white/60 text-xs flex items-center gap-2">
+                        <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                        Deploy and manage AI agents
+                      </div>
+                      <div className="text-white/60 text-xs flex items-center gap-2">
+                        <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                        Set ENS records for your agents
+                      </div>
+                      <div className="text-white/60 text-xs flex items-center gap-2">
+                        <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                        Chat with your AI assistant
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-white/60 text-xs flex items-center gap-2">
+                        <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                        Verify your identity securely
+                      </div>
+                      <div className="text-white/60 text-xs flex items-center gap-2">
+                        <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                        Chat with AI assistant
+                      </div>
+                      <div className="text-white/60 text-xs flex items-center gap-2">
+                        <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+                        Access your personalized dashboard
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </BoxReveal>
+          </div>
+
+          {/* Footer */}
           <BoxReveal boxColor="#3b82f6" duration={0.3}>
             <div className="mt-6 text-center">
-              <p className="text-white/70 text-sm">
-                Don&apos;t have an account?{' '}
-                <button className="text-blue-300 hover:text-blue-200 transition-colors">
-                  Sign up here
-                </button>
+              <p className="text-white/50 text-xs">
+                By connecting your wallet, you agree to our terms of service and privacy policy.
               </p>
             </div>
           </BoxReveal>
         </div>
       </div>
     </div>
+  </div>
   );
 });
 
