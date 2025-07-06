@@ -38,22 +38,97 @@ export async function POST(req: NextRequest) {
             {
                 "id": 0,
                 "name": "agent.py",
-                // "value": "\n# Congratulations on creating your first agent!\n#\n# This agent simply writes a greeting in the logs on a scheduled time interval.\n#\n# In this example we will use:\n# - 'agent': this is your instance of the 'Agent' class that we will give an 'on_interval' task\n# - 'ctx': this is the agent's 'Context', which gives you access to all the agent's important functions\n\n# A decorator (marked by the '@' symbol) just wraps the function defined under it in another function.\n# This decorator tells your agent to run the function on a time interval with the specified 'period' in seconds.\n# These functions must be 'async' because agents need to be able to perform many tasks concurrently.\n@agent.on_interval(period=3.0)\nasync def say_hello(ctx: Context):\n    # ctx.logger is a standard Python logger that can log text with various levels of urgency\n    # (exception, warning, info, debug). Here we will just use the 'info' level to write a greeting\n    ctx.logger.info(f\"Hello, I'm an agent and my address is {agent.address}.\")\n",
+//                 "value" : `
+// from uagents import Agent, Context
+
+// agent = Agent()
+
+// @agent.on_interval(period=10.0)
+// async def greet(ctx: Context):
+//     ctx.logger.info(f"Hi, I'm agent {agent.address}")
+// `,
                 "value" : `
-from uagents import Agent, Context
+import time
+import requests
+from uagents import Agent, Context, Model
+import os
+import json
+from dotenv import load_dotenv
 
-agent = Agent()
+# Load environment variables
+load_dotenv()
 
-@agent.on_interval(period=10.0)
-async def greet(ctx: Context):
-    ctx.logger.info(f"Hi, I'm agent {agent.address}")
+class Message(Model):
+    message : str
+
+class Request(Model):
+    text: str
+
+class Response(Model):
+    timestamp: int
+    text: str
+    agent_address: str
+
+# Helper function to call ASI1 API
+def prompt_as1(prompt: str) -> str:
+    url = "https://api.asi1.ai/v1/chat/completions"
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {os.getenv("ASI1_API_KEY")}'
+    }
+
+    payload = {
+        "model": "asi1-mini",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 0
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()['choices'][0]['message']['content']
+
+    except requests.exceptions.RequestException as e:
+        return f"API Request Error: {str(e)}"
+
+    except json.JSONDecodeError:
+        return "API Error: Unable to parse JSON response"
+
+@agent.on_event("startup")
+async def language_tutor_demo(ctx: Context):
+    ctx.logger.info("Agent started")
+
+# For more info on communication: https://innovationlab.fetch.ai/resources/docs/agent-communication/uagent-uagent-communication
+
+# Callback when a message is received
+@agent.on_message(model = Message)
+async def message_handler(ctx: Context, sender : str, msg: Message):
+    ctx.logger.info(f'I have received a message from {sender}.')
+    ctx.logger.info(f'I have received a message {msg.message}.')
+
+# User queries agent via the chat assistant
+@agent.on_rest_post("/rest/post", Request, Response)
+async def handle_post(ctx: Context, req: Request) -> Response:
+    ctx.logger.info("Received POST request")
+    return Response(
+        text=f"Received: {req.text}",
+        agent_address=ctx.agent.address,
+        timestamp=int(time.time()),
+    )
+    
+    # A user can do two things:
+    # 1. Add infomation about himself to the agent memory
+    # 2. Ask the agent something about another user
+    
+    # TODO: logic
 `,
                 "language": "python"
             },
             {
                 "id": 1,
                 "name": ".env",
-                "value": `AGENT_SEED=${walletAddress}`, // or derived seed
+                "value": `AGENT_SEED=${walletAddress}\nASI1_API_KEY=${process.env.ASI1_API_KEY}`, // or derived seed
                 "language": "python"
             }
         ]
