@@ -453,6 +453,7 @@ const AIChatPage = memo(function AIChatPage() {
       timestamp: new Date().toISOString()
     }
   ]);
+  const [history, setHistory] = useState('');
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -564,41 +565,41 @@ const AIChatPage = memo(function AIChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const simulateAIResponse = async (userMessage: string, files?: UploadedFile[]) => {
-    setIsTyping(true);
+  // const simulateAIResponse = async (userMessage: string, files?: UploadedFile[]) => {
+  //   setIsTyping(true);
 
-    // Simulate AI thinking time
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+  //   // Simulate AI thinking time
+  //   await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
 
-    let aiResponse = '';
+  //   let aiResponse = '';
 
-    if (files && files.length > 0) {
-      const fileNames = files.map(f => f.name).join(', ');
-      aiResponse = `I've received your file(s): ${fileNames}. I can see ${files.length} file(s) uploaded. Let me analyze them for you.\n\nBased on the files you've shared, I can help you with:\n• Document analysis and summarization\n• Image recognition and description\n• Data extraction\n• Content review\n\nWhat would you like me to focus on?`;
-    } else {
-      // Simple responses based on user input
-      const lowerMessage = userMessage.toLowerCase();
-      if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-        aiResponse = "Hello! How can I assist you today? You can ask me questions or upload files for analysis.";
-      } else if (lowerMessage.includes('help')) {
-        aiResponse = "I'm here to help! I can:\n• Analyze documents and images\n• Answer questions\n• Summarize content\n• Extract information\n\nJust upload a file using the + button or ask me anything!";
-      } else if (lowerMessage.includes('upload') || lowerMessage.includes('file')) {
-        aiResponse = "To upload files, click the + button next to the message input. I can analyze various file types including images, documents, PDFs, and more!";
-      } else {
-        aiResponse = `I understand you're asking about "${userMessage}". While I'd love to give you a detailed response, this is a demo interface. In a real implementation, I would process your request and provide comprehensive assistance!`;
-      }
-    }
+  //   if (files && files.length > 0) {
+  //     const fileNames = files.map(f => f.name).join(', ');
+  //     aiResponse = `I've received your file(s): ${fileNames}. I can see ${files.length} file(s) uploaded. Let me analyze them for you.\n\nBased on the files you've shared, I can help you with:\n• Document analysis and summarization\n• Image recognition and description\n• Data extraction\n• Content review\n\nWhat would you like me to focus on?`;
+  //   } else {
+  //     // Simple responses based on user input
+  //     const lowerMessage = userMessage.toLowerCase();
+  //     if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+  //       aiResponse = "Hello! How can I assist you today? You can ask me questions or upload files for analysis.";
+  //     } else if (lowerMessage.includes('help')) {
+  //       aiResponse = "I'm here to help! I can:\n• Analyze documents and images\n• Answer questions\n• Summarize content\n• Extract information\n\nJust upload a file using the + button or ask me anything!";
+  //     } else if (lowerMessage.includes('upload') || lowerMessage.includes('file')) {
+  //       aiResponse = "To upload files, click the + button next to the message input. I can analyze various file types including images, documents, PDFs, and more!";
+  //     } else {
+  //       aiResponse = `I understand you're asking about "${userMessage}". While I'd love to give you a detailed response, this is a demo interface. In a real implementation, I would process your request and provide comprehensive assistance!`;
+  //     }
+  //   }
 
-    const aiMessage: Message = {
-      id: Date.now().toString(),
-      type: 'ai',
-      content: aiResponse,
-      timestamp: new Date().toISOString()
-    };
+  //   const aiMessage: Message = {
+  //     id: Date.now().toString(),
+  //     type: 'ai',
+  //     content: aiResponse,
+  //     timestamp: new Date().toISOString()
+  //   };
 
-    setMessages(prev => [...prev, aiMessage]);
-    setIsTyping(false);
-  };
+  //   setMessages(prev => [...prev, aiMessage]);
+  //   setIsTyping(false);
+  // };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() && uploadedFiles.length === 0) return;
@@ -617,7 +618,32 @@ const AIChatPage = memo(function AIChatPage() {
     setShowFileUpload(false);
 
     // Simulate AI response
-    await simulateAIResponse(userMessage.content, userMessage.attachments);
+    // await simulateAIResponse(userMessage.content, userMessage.attachments);
+
+    const url = user?.walletAddress == process.env.TEST_ALICE_ADDRESS ? 'http://localhost:8000/rest/post' : 'http://localhost:8001/rest/post';
+    setIsTyping(true);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: history ? history + '\n\n' + userMessage.content : userMessage.content
+      }),
+    });
+
+    const data = await response.json();
+    setHistory(data.history || '');
+
+    const aiMessage: Message = {
+      id: Date.now().toString(),
+      type: 'ai',
+      content: response.status == 200 ? data.text : "I'm sorry, I'm not able to process your message at the moment. Please try again later.",
+      timestamp: new Date().toISOString()
+    };
+
+    setMessages(prev => [...prev, aiMessage]);
+    setIsTyping(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

@@ -197,8 +197,6 @@ export default function ConnectWalletButton() {
       setAgentCertificate(data.agentAddress, signature);
       // // Optionally redirect to the hosted agent inspect page:
       // window.open(data.hostedUrl, '_blank');
-
-      // TODO: update the code of the agent using /v1/hosting/agents/{agentAddress}/code (doc: https://docs.agentverse.ai/docs/api/hosting)
       
       // Update ENS with the real agent address from AgentVerse
       await setAgentAddressInENS();

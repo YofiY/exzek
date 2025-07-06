@@ -38,15 +38,6 @@ export async function POST(req: NextRequest) {
             {
                 "id": 0,
                 "name": "agent.py",
-//                 "value" : `
-// from uagents import Agent, Context
-
-// agent = Agent()
-
-// @agent.on_interval(period=10.0)
-// async def greet(ctx: Context):
-//     ctx.logger.info(f"Hi, I'm agent {agent.address}")
-// `,
                 "value" : `
 import time
 import requests
@@ -120,8 +111,6 @@ async def handle_post(ctx: Context, req: Request) -> Response:
     # A user can do two things:
     # 1. Add infomation about himself to the agent memory
     # 2. Ask the agent something about another user
-    
-    # TODO: logic
 `,
                 "language": "python"
             },
